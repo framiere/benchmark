@@ -1,5 +1,5 @@
 provider "aws" {
-  region  = "${var.region}"
+  region  = var.region
   version = "3.50"
   profile = "conduktor-dev"
 }
@@ -10,8 +10,8 @@ provider "random" {
 
 locals {
   tags = {
-    "conduktor.io/team" = "gateway"
-    "conduktor.io/app-name" = "openmessaging"
+    "conduktor.io/team"       = "gateway"
+    "conduktor.io/app-name"   = "openmessaging"
     "conduktor.io/managed-by" = "framiere"
   }
 }
@@ -60,33 +60,30 @@ variable "num_instances" {
 # }
 data "aws_vpc" "default" {
   default = true
-} 
+}
 
-# Create an internet gateway to give our subnet access to the outside world
-resource "aws_internet_gateway" "kafka" {
-  vpc_id = "${data.aws_vpc.default.id}"
-  
-  tags = merge(
-    { Name = "benchmark-igw" },
-    local.tags
-  )
+# NOTE: Use the default internet gateway
+data "aws_internet_gateway" "default" {
+  filter {
+    name   = "attachment.vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
 }
 
 # Grant the VPC internet access on its main route table
 resource "aws_route" "internet_access" {
-  route_table_id         = "${data.aws_vpc.default.main_route_table_id}"
+  route_table_id         = data.aws_vpc.default.main_route_table_id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "${aws_internet_gateway.kafka.id}"
-  
+  gateway_id             = data.aws_internet_gateway.default.id
 }
 
 # Create a subnet to launch our instances into
 resource "aws_subnet" "benchmark_subnet" {
-  vpc_id                  = "${data.aws_vpc.default.id}"
+  vpc_id                  = data.aws_vpc.default.id
   cidr_block              = "172.31.48.0/28"
   map_public_ip_on_launch = true
-  availability_zone       = "${var.az}"
-  
+  availability_zone       = var.az
+
   tags = merge(
     { Name = "benchmark-snet-01" },
     local.tags
@@ -95,7 +92,7 @@ resource "aws_subnet" "benchmark_subnet" {
 
 resource "aws_security_group" "benchmark_security_group" {
   name   = "terraform-kafka-${random_id.hash.hex}"
-  vpc_id = "${data.aws_vpc.default.id}"
+  vpc_id = data.aws_vpc.default.id
 
   # SSH access from anywhere
   ingress {
@@ -120,7 +117,7 @@ resource "aws_security_group" "benchmark_security_group" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   tags = merge(
     { Name = "Benchmark-Security-Group-${random_id.hash.hex}" },
     local.tags
@@ -129,8 +126,8 @@ resource "aws_security_group" "benchmark_security_group" {
 
 resource "aws_key_pair" "auth" {
   key_name   = "${var.key_name}-${random_id.hash.hex}"
-  public_key = "${file(var.public_key_path)}"
-  
+  public_key = file(var.public_key_path)
+
   tags = merge(
     { Name = "benchmark-key" },
     local.tags
@@ -138,12 +135,12 @@ resource "aws_key_pair" "auth" {
 }
 
 resource "aws_instance" "zookeeper" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["zookeeper"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = var.ami
+  instance_type          = var.instance_types["zookeeper"]
+  key_name               = aws_key_pair.auth.id
+  subnet_id              = aws_subnet.benchmark_subnet.id
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["zookeeper"]}"
+  count                  = var.num_instances["zookeeper"]
 
   tags = merge({
     Name      = "zk_${count.index}"
@@ -154,12 +151,12 @@ resource "aws_instance" "zookeeper" {
 }
 
 resource "aws_instance" "kafka" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["kafka"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = var.ami
+  instance_type          = var.instance_types["kafka"]
+  key_name               = aws_key_pair.auth.id
+  subnet_id              = aws_subnet.benchmark_subnet.id
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["kafka"]}"
+  count                  = var.num_instances["kafka"]
 
   tags = merge({
     Name      = "kafka_${count.index}"
@@ -170,12 +167,12 @@ resource "aws_instance" "kafka" {
 }
 
 resource "aws_instance" "client" {
-  ami                    = "${var.ami}"
-  instance_type          = "${var.instance_types["client"]}"
-  key_name               = "${aws_key_pair.auth.id}"
-  subnet_id              = "${aws_subnet.benchmark_subnet.id}"
+  ami                    = var.ami
+  instance_type          = var.instance_types["client"]
+  key_name               = aws_key_pair.auth.id
+  subnet_id              = aws_subnet.benchmark_subnet.id
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
-  count                  = "${var.num_instances["client"]}"
+  count                  = var.num_instances["client"]
 
   tags = merge({
     Name      = "kafka_client_${count.index}"
@@ -186,9 +183,9 @@ resource "aws_instance" "client" {
 }
 
 output "kafka_ssh_host" {
-  value = "${aws_instance.kafka.0.public_ip}"
+  value = aws_instance.kafka.0.public_ip
 }
 
 output "client_ssh_host" {
-  value = "${aws_instance.client.0.public_ip}"
+  value = aws_instance.client.0.public_ip
 }
