@@ -70,13 +70,6 @@ data "aws_internet_gateway" "default" {
   }
 }
 
-# Grant the VPC internet access on its main route table
-resource "aws_route" "internet_access" {
-  route_table_id         = data.aws_vpc.default.main_route_table_id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = data.aws_internet_gateway.default.id
-}
-
 # Create a subnet to launch our instances into
 resource "aws_subnet" "benchmark_subnet" {
   vpc_id                  = data.aws_vpc.default.id
