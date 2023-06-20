@@ -1,10 +1,19 @@
 provider "aws" {
   region  = "${var.region}"
   version = "3.50"
+  profile = "conduktor-dev"
 }
 
 provider "random" {
   version = "3.1"
+}
+
+locals {
+  tags = {
+    "conduktor.io/team" = "gateway"
+    "conduktor.io/app-name" = "openmessaging"
+    "conduktor.io/managed-by" = "framiere"
+  }
 }
 
 variable "public_key_path" {
@@ -40,38 +49,53 @@ variable "num_instances" {
   type = map(string)
 }
 
+# NOTE: WE DO NOT NEED TO CREATE A VPC, WE CAN USE THE DEFAULT ONE
 # Create a VPC to launch our instances into
-resource "aws_vpc" "benchmark_vpc" {
-  cidr_block = "10.0.0.0/16"
+# resource "aws_vpc" "benchmark_vpc" {
+#   cidr_block = "10.0.0.0/16"
 
-  tags = {
-    Name = "Kafka_Benchmark_VPC_${random_id.hash.hex}"
-  }
-}
+#   tags = {
+#     Name = "Kafka_Benchmark_VPC_${random_id.hash.hex}"
+#   }
+# }
+data "aws_vpc" "default" {
+  default = true
+} 
 
 # Create an internet gateway to give our subnet access to the outside world
 resource "aws_internet_gateway" "kafka" {
-  vpc_id = "${aws_vpc.benchmark_vpc.id}"
+  vpc_id = "${data.aws_vpc.default.id}"
+  
+  tags = merge(
+    { Name = "benchmark-igw" },
+    local.tags
+  )
 }
 
 # Grant the VPC internet access on its main route table
 resource "aws_route" "internet_access" {
-  route_table_id         = "${aws_vpc.benchmark_vpc.main_route_table_id}"
+  route_table_id         = "${data.aws_vpc.default.main_route_table_id}"
   destination_cidr_block = "0.0.0.0/0"
   gateway_id             = "${aws_internet_gateway.kafka.id}"
+  
 }
 
 # Create a subnet to launch our instances into
 resource "aws_subnet" "benchmark_subnet" {
-  vpc_id                  = "${aws_vpc.benchmark_vpc.id}"
-  cidr_block              = "10.0.0.0/24"
+  vpc_id                  = "${data.aws_vpc.default.id}"
+  cidr_block              = "172.31.48.0/28"
   map_public_ip_on_launch = true
   availability_zone       = "${var.az}"
+  
+  tags = merge(
+    { Name = "benchmark-snet-01" },
+    local.tags
+  )
 }
 
 resource "aws_security_group" "benchmark_security_group" {
   name   = "terraform-kafka-${random_id.hash.hex}"
-  vpc_id = "${aws_vpc.benchmark_vpc.id}"
+  vpc_id = "${data.aws_vpc.default.id}"
 
   # SSH access from anywhere
   ingress {
@@ -96,15 +120,21 @@ resource "aws_security_group" "benchmark_security_group" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = {
-    Name = "Benchmark-Security-Group-${random_id.hash.hex}"
-  }
+  
+  tags = merge(
+    { Name = "Benchmark-Security-Group-${random_id.hash.hex}" },
+    local.tags
+  )
 }
 
 resource "aws_key_pair" "auth" {
   key_name   = "${var.key_name}-${random_id.hash.hex}"
   public_key = "${file(var.public_key_path)}"
+  
+  tags = merge(
+    { Name = "benchmark-key" },
+    local.tags
+  )
 }
 
 resource "aws_instance" "zookeeper" {
@@ -115,10 +145,12 @@ resource "aws_instance" "zookeeper" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["zookeeper"]}"
 
-  tags = {
+  tags = merge({
     Name      = "zk_${count.index}"
     Benchmark = "Kafka"
-  }
+    },
+    local.tags
+  )
 }
 
 resource "aws_instance" "kafka" {
@@ -129,10 +161,12 @@ resource "aws_instance" "kafka" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["kafka"]}"
 
-  tags = {
+  tags = merge({
     Name      = "kafka_${count.index}"
     Benchmark = "Kafka"
-  }
+    },
+    local.tags
+  )
 }
 
 resource "aws_instance" "client" {
@@ -143,10 +177,12 @@ resource "aws_instance" "client" {
   vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
   count                  = "${var.num_instances["client"]}"
 
-  tags = {
+  tags = merge({
     Name      = "kafka_client_${count.index}"
     Benchmark = "Kafka"
-  }
+    },
+    local.tags
+  )
 }
 
 output "kafka_ssh_host" {
