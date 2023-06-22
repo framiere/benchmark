@@ -1,0 +1,113 @@
+gatewayClusterId: conduktorGateway
+kafkaSelector:
+  file:
+    path: kafka.config
+routing: port
+hostPortConfiguration:
+  proxyBindHost: 0.0.0.0
+  proxyHost: {{ ansible_eth0.ipv4.address }}
+  hostPrefix: {{ ansible_eth0.ipv4.address }}
+  tenantInHostname: false
+  portRange: 6969:6975
+  proxyPort: 6969
+schemaRegistry:
+  host: http://schema-registry:8081
+  cacheSize: 50
+authenticationConfig:
+  authenticatorType: NONE
+  connectionsMaxReauthMs: 0
+  exponentialBackoff:
+    multiplier: 2
+    backoffMaxMs: 5000
+  sslConfig:
+    updateContextIntervalMinutes: 5
+    keyStore:
+      keyStorePath:
+      keyStorePassword:
+      keyPassword:
+      keyStoreType:
+      updateIntervalMsecs:
+httpConfig:
+  port: 8888
+  httpErrorMappingFile:
+  apiConfigFile:
+  securedMetrics: false
+  superUsers:
+    - username: admin
+      password: conduktor
+      admin: true
+threadConfig:
+  downStreamThread: 2
+  upstream:
+    numberOfThread: 4
+    maxPendingTask: 2048
+maxResponseLatency: 3000
+maxIdleProducerMs: 600000
+inFlightRequestExpiryMs: 60000
+upstreamConnectionConfig:
+  numOfConnection: 10
+  maxIdleTimeMs: 200000
+topicStoreConfig:
+  topicMappingServiceBackingTopic: _topicMappings
+  topicRegistryServiceBackingTopic: _topicRegistry
+  realTopicPartitionCount: 3
+userPoolConfig:
+  type: JWT
+  jwt:
+    secretKey: Y2hhbmdlaXRidXRsb25nZXJjYXVzZXdlbmVlZDI1NmtleQ==
+    signatureAlgorithm: HS256
+    defaultReAuthIntervalMs: 604800000
+  conduktor:
+    authHost:
+    bearerToken:
+    defaultReAuthIntervalMs:
+    failedBackoffPeriodMs:
+    authTimeoutMs:
+    tokenSecret:
+  platformRbac:
+    platformUrl:
+    bearerToken:
+    tokenSecret:
+interceptorConfig:
+  backingTopic: _interceptorConfigs
+  configLocation:
+  restrictingGlobalInterceptors:
+tenantStoreConfig:
+  tenantConfigurationServiceBackingTopic: _tenantConfigMappings
+offsetStoreConfig:
+  committedOffsetBackingTopic: _offsetStore
+  consumerGroupSubscriptionBackingTopic: _consumerGroupSubscriptionBackingTopic
+featureFlags:
+  restrictingTenantApis: false
+  audit: false
+  autoConcentrateTenants: false
+  rbac: false
+  tracking: false
+  singleTenant: false
+  mergeCluster: false
+  noInternalTopics: false
+  caching: false
+  internalLoadBalancing: true
+resourceNameBackingTopic: _resourceNames
+profiling: false
+auditLogConfig:
+  specVersion: 0.1.0
+  auditLogServiceBackingTopic: _auditLogs
+  replicationFactorOfTopic: 1
+  numPartitionsOfTopic: 3
+storeTtlMs: 604800000
+tracking:
+  endpoint: https://api.segment.io
+  writeKey:
+caching:
+  dbPath: caching_storage
+rbacConfig:
+  aclEntryTtl: 3
+  platformEndpoint: http://localhost:7999/p
+  bearerToken: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2F1dGgtc3RhZ2luZy5jb25kdWt0b3IuYXBwIiwic291cmNlQXBwbGljYXRpb24iOiJwbGF5Z3JvdW5kIiwidXNlck1haWwiOm51bGx9.1XjzojD3TqfIQ8A8DqWQppwoa6ie07DRZm46rfP0UvE
+licenseConfig:
+  licenseBackingTopic: _license
+  keyAlgorithm: RSA
+  publicKey: ~
+  licenseKey: ~
+defaultKCacheReplicationFactor: -1

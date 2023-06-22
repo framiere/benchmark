@@ -10,9 +10,6 @@ provider "random" {
 
 locals {
   tags = {
-    "conduktor.io/team"       = "gateway"
-    "conduktor.io/app-name"   = "openmessaging"
-    "conduktor.io/managed-by" = "framiere"
   }
 }
 
@@ -73,7 +70,7 @@ data "aws_internet_gateway" "default" {
 # Create a subnet to launch our instances into
 resource "aws_subnet" "benchmark_subnet" {
   vpc_id                  = data.aws_vpc.default.id
-  cidr_block              = "172.31.48.0/28"
+  cidr_block              = "172.31.48.0/24"
   map_public_ip_on_launch = true
   availability_zone       = var.az
 
@@ -100,7 +97,7 @@ resource "aws_security_group" "benchmark_security_group" {
     from_port   = 0
     to_port     = 65535
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = ["172.31.0.0/16"]
   }
 
   # outbound internet access
@@ -175,10 +172,30 @@ resource "aws_instance" "client" {
   )
 }
 
+resource "aws_instance" "gateway" {
+  ami                    = var.ami
+  instance_type          = var.instance_types["gateway"]
+  key_name               = aws_key_pair.auth.id
+  subnet_id              = aws_subnet.benchmark_subnet.id
+  vpc_security_group_ids = ["${aws_security_group.benchmark_security_group.id}"]
+  count                  = var.num_instances["gateway"]
+
+  tags = merge({
+    Name      = "gateway_${count.index}"
+    Benchmark = "Gateway"
+    },
+    local.tags
+  )
+}
+
 output "kafka_ssh_host" {
   value = aws_instance.kafka.0.public_ip
 }
 
 output "client_ssh_host" {
   value = aws_instance.client.0.public_ip
+}
+
+output "gateway_ssh_host" {
+  value = aws_instance.gateway.0.public_ip
 }
