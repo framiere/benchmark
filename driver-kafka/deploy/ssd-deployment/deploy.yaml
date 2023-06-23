@@ -121,18 +121,19 @@
         echo 'LANG=en_US.utf-8
               LC_ALL=en_US.utf-8' > /etc/environment
 
-- name: Gateway override setup because benchmarking is so low on jdk version LUL
+- name: Gateway override jdk to java17
   hosts: gateway
   become: true
   tasks:
-    - name: Deinstall packages
-      yum: pkg={{ item }} state=absent
-      with_items:
-        - java-11-openjdk
-    - name: Install RPM packages
+    - name: Install Java 17 packages
       yum: pkg={{ item }} state=latest
       with_items:
         - java-17-openjdk
+    - name: Change Java alternative to Java17
+      community.general.alternatives:
+        name: java
+        path: /usr/lib/jvm/java-17-openjdk-amd64/jre/bin/java
+
 
 - name: Setup ZooKeeper
   hosts: zookeeper

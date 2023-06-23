@@ -10,6 +10,9 @@ provider "random" {
 
 locals {
   tags = {
+    "conduktor.io/team"       = "gateway"
+    "conduktor.io/app-name"   = "openmessaging"
+    "conduktor.io/managed-by" = "framiere"
   }
 }
 
