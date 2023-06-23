@@ -132,7 +132,7 @@
     - name: Change Java alternative to Java17
       community.general.alternatives:
         name: java
-        path: /usr/lib/jvm/java-17-openjdk-amd64/jre/bin/java
+        path: /usr/lib/jvm/java-17-openjdk-17.0.7.0.7-3.el9.x86_64/bin/java
 
 
 - name: Setup ZooKeeper
